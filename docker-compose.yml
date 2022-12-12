@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  frontend:
+    image: jaysoftware/rotaract_frontend
+    container_name: frontend
+    restart: always
+    ports:
+      - 3000:3000
+      
+  nginx:
+    build: ./nginx/nginx
+    image: evgeniy-khyst/nginx
+    env_file:
+      - ./nginx/config.env
+    volumes:
+      - nginx_conf:/etc/nginx/sites
+      - letsencrypt_certs:/etc/letsencrypt
+      - certbot_acme_challenge:/var/www/certbot
+      - ./nginx/vhosts:/etc/nginx/vhosts
+      - ./nginx/html:/var/www/html
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+
+  certbot:
+    build: ./nginx/certbot
+    image: evgeniy-khyst/certbot
+    env_file:
+      - ./nginx/config.env
+    volumes:
+      - letsencrypt_certs:/etc/letsencrypt
+      - certbot_acme_challenge:/var/www/certbot
+
+  cron:
+    build: ./nginx/cron
+    image: evgeniy-khyst/cron
+    environment:
+      COMPOSE_PROJECT_NAME: "${COMPOSE_PROJECT_NAME}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./nginx/:/workdir:ro
+    restart: unless-stopped
+
+volumes:
+  nginx_conf:
+    external: true
+  letsencrypt_certs:
+    external: true
+  certbot_acme_challenge:
